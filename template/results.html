@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">חיפוש רכב</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5; color: #222; direction: rtl; }
+  #header { background: #1a1a2e; color: #fff; padding: 20px 24px; }
+  #header h1 { font-size: 1.6rem; margin-bottom: 6px; }
+  #header .meta { font-size: 0.85rem; color: #aab; }
+  #filter-bar { background: #fff; border-bottom: 1px solid #ddd; padding: 12px 20px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .filter-group { display: flex; gap: 6px; align-items: center; }
+  .filter-group label { font-size: 0.8rem; color: #666; font-weight: 600; }
+  .chip { border: 1.5px solid #bbb; border-radius: 16px; padding: 4px 14px; font-size: 0.8rem; cursor: pointer; background: #fff; transition: all .15s; }
+  .chip.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+  #stats-bar { padding: 10px 20px; background: #eef; font-size: 0.85rem; color: #334; }
+  .container { padding: 16px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+  thead { background: #1a1a2e; color: #fff; }
+  th { padding: 12px 10px; text-align: right; white-space: nowrap; cursor: pointer; user-select: none; font-size: 0.85rem; }
+  th:hover { background: #2a2a4e; }
+  th.sorted-asc::after { content: ' ▲'; }
+  th.sorted-desc::after { content: ' ▼'; }
+  td { padding: 10px 10px; border-bottom: 1px solid #eee; font-size: 0.87rem; vertical-align: middle; }
+  tr:hover td { background: #f0f4ff; }
+  tr.expanded td { background: #fafafa; }
+  .score-excellent { background: #d4edda; color: #155724; border-radius: 4px; padding: 2px 8px; font-weight: 700; white-space: nowrap; }
+  .score-good { background: #e8f5e0; color: #2d6a2d; border-radius: 4px; padding: 2px 8px; font-weight: 700; white-space: nowrap; }
+  .score-average { background: #fff3cd; color: #856404; border-radius: 4px; padding: 2px 8px; font-weight: 700; white-space: nowrap; }
+  .score-high { background: #f8d7da; color: #721c24; border-radius: 4px; padding: 2px 8px; font-weight: 700; white-space: nowrap; }
+  .score-na { background: #e2e3e5; color: #383d41; border-radius: 4px; padding: 2px 8px; white-space: nowrap; }
+  .src-yad2 { color: #e44d26; font-weight: 700; font-size: 0.8rem; }
+  .src-facebook { color: #1877f2; font-weight: 700; font-size: 0.8rem; }
+  .link-btn { display: inline-block; background: #1a1a2e; color: #fff; padding: 4px 10px; border-radius: 4px; text-decoration: none; font-size: 0.8rem; white-space: nowrap; }
+  .link-btn:hover { background: #2a2a5e; }
+  .detail-row td { padding: 8px 16px; background: #f9f9f9; font-size: 0.82rem; color: #555; border-bottom: 2px solid #ddd; }
+  .hidden { display: none !important; }
+  #no-results { text-align: center; padding: 40px; color: #888; font-size: 1rem; }
+  .price-cell { font-weight: 700; color: #1a1a2e; white-space: nowrap; }
+  .km-cell { white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1 id="main-title">טוען...</h1>
+  <div class="meta" id="search-meta"></div>
+  <div class="meta" id="gen-time"></div>
+</div>
+
+<div id="filter-bar">
+  <div class="filter-group">
+    <label>מקור:</label>
+    <button class="chip active" data-filter="source" data-val="all" onclick="setFilter('source','all',this)">הכל</button>
+    <button class="chip" data-filter="source" data-val="yad2" onclick="setFilter('source','yad2',this)">יד2</button>
+    <button class="chip" data-filter="source" data-val="facebook" onclick="setFilter('source','facebook',this)">פייסבוק</button>
+  </div>
+  <div class="filter-group">
+    <label>יד:</label>
+    <button class="chip active" data-filter="hand" data-val="all" onclick="setFilter('hand','all',this)">הכל</button>
+    <button class="chip" data-filter="hand" data-val="1" onclick="setFilter('hand','1',this)">יד 1</button>
+    <button class="chip" data-filter="hand" data-val="2" onclick="setFilter('hand','2',this)">יד 2</button>
+    <button class="chip" data-filter="hand" data-val="3+" onclick="setFilter('hand','3+',this)">יד 3+</button>
+  </div>
+  <div class="filter-group">
+    <label>ניקוד:</label>
+    <button class="chip active" data-filter="score" data-val="all" onclick="setFilter('score','all',this)">הכל</button>
+    <button class="chip" data-filter="score" data-val="excellent" onclick="setFilter('score','excellent',this)">מצוין</button>
+    <button class="chip" data-filter="score" data-val="good" onclick="setFilter('score','good',this)">טוב</button>
+    <button class="chip" data-filter="score" data-val="average" onclick="setFilter('score','average',this)">ממוצע</button>
+    <button class="chip" data-filter="score" data-val="high" onclick="setFilter('score','high',this)">גבוה</button>
+  </div>
+</div>
+
+<div id="stats-bar"></div>
+
+<div class="container">
+  <table id="results-table">
+    <thead>
+      <tr>
+        <th onclick="sortBy('source')">מקור</th>
+        <th onclick="sortBy('seller')">מוכר</th>
+        <th onclick="sortBy('model')">דגם</th>
+        <th onclick="sortBy('year')">שנה</th>
+        <th onclick="sortBy('hand')">יד</th>
+        <th onclick="sortBy('km')" class="km-cell">ק"מ</th>
+        <th onclick="sortBy('kmPerYear')">ק"מ/שנה</th>
+        <th onclick="sortBy('scoreCat')">ניקוד</th>
+        <th onclick="sortBy('engine')">מנוע</th>
+        <th onclick="sortBy('price')">מחיר ₪</th>
+        <th>קישור</th>
+      </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+  </table>
+  <div id="no-results" class="hidden">אין תוצאות תואמות לסינון הנוכחי</div>
+</div>
+
+<script>
+const LISTINGS = __DATA__;
+const META = __META__;
+
+// ── State ───────────────────────────────────────────────────────────────────
+const filters = { source: 'all', hand: 'all', score: 'all' };
+let sortKey = 'kmPerYear';
+let sortDir = 1; // 1=asc, -1=desc
+const expandedRows = new Set();
+
+// ── Init ────────────────────────────────────────────────────────────────────
+document.title = `חיפוש: ${META.make} ${META.model}`;
+document.getElementById('main-title').textContent = `חיפוש: ${META.make} ${META.model}`;
+document.getElementById('search-meta').textContent =
+  `מחיר: ${META.priceMin.toLocaleString()}–${META.priceMax.toLocaleString()} ₪  |  שנים: ${META.yearMin}–${META.yearMax}  |  ק"מ עד: ${META.kmMax.toLocaleString()}  |  מנוע: ${META.engine || 'כל הנפחים'}`;
+document.getElementById('gen-time').textContent = `נוצר: ${META.generatedAt}`;
+
+render();
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+function scoreCategory(kmPerYear) {
+  if (kmPerYear === null || kmPerYear === undefined || isNaN(kmPerYear)) return 'na';
+  if (kmPerYear <= 10000) return 'excellent';
+  if (kmPerYear <= 15000) return 'good';
+  if (kmPerYear <= 20000) return 'average';
+  return 'high';
+}
+
+function scoreLabel(cat) {
+  return { excellent: 'מצוין ⭐', good: 'טוב ✓', average: 'ממוצע ~', high: 'גבוה ⚠', na: 'N/A' }[cat];
+}
+
+function fmtNum(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return Number(n).toLocaleString('he-IL');
+}
+
+function handLabel(h) {
+  if (!h) return '—';
+  const m = { 1: 'ראשונה', 2: 'שנייה', 3: 'שלישית', 4: 'רביעית' };
+  return m[h] ? `יד ${m[h]}` : `יד ${h}`;
+}
+
+// ── Filtering ───────────────────────────────────────────────────────────────
+function setFilter(key, val, el) {
+  filters[key] = val;
+  el.closest('.filter-group').querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function passesFilter(item) {
+  const cat = scoreCategory(item.kmPerYear);
+  if (filters.source !== 'all' && item.source !== filters.source) return false;
+  if (filters.hand !== 'all') {
+    if (filters.hand === '3+') { if (!item.hand || item.hand < 3) return false; }
+    else { if (String(item.hand) !== filters.hand) return false; }
+  }
+  if (filters.score !== 'all' && cat !== filters.score) return false;
+  return true;
+}
+
+// ── Sorting ──────────────────────────────────────────────────────────────────
+function sortBy(key) {
+  if (sortKey === key) sortDir *= -1;
+  else { sortKey = key; sortDir = 1; }
+  document.querySelectorAll('th').forEach(th => th.classList.remove('sorted-asc','sorted-desc'));
+  const thIdx = ['source','seller','model','year','hand','km','kmPerYear','scoreCat','engine','price'].indexOf(key);
+  if (thIdx >= 0) {
+    const th = document.querySelectorAll('thead th')[thIdx];
+    th.classList.add(sortDir === 1 ? 'sorted-asc' : 'sorted-desc');
+  }
+  render();
+}
+
+function cmpVal(item, key) {
+  if (key === 'scoreCat') return scoreCategory(item.kmPerYear) === 'na' ? 9 : ['excellent','good','average','high'].indexOf(scoreCategory(item.kmPerYear));
+  const v = item[key];
+  if (v === null || v === undefined || v === '') return sortDir === 1 ? Infinity : -Infinity;
+  return typeof v === 'string' ? v : Number(v);
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  const visible = LISTINGS.filter(passesFilter);
+  visible.sort((a, b) => {
+    const av = cmpVal(a, sortKey), bv = cmpVal(b, sortKey);
+    if (av === bv) return 0;
+    if (typeof av === 'string') return av.localeCompare(bv) * sortDir;
+    return (av - bv) * sortDir;
+  });
+
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+
+  visible.forEach((item, idx) => {
+    const cat = scoreCategory(item.kmPerYear);
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.onclick = () => toggleDetail(item.href, idx);
+    tr.innerHTML = `
+      <td><span class="src-${item.source}">${item.source === 'yad2' ? 'יד2' : 'FB'}</span></td>
+      <td>${item.seller || '—'}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${item.model || ''}">${item.model || '—'}</td>
+      <td>${item.year || '—'}</td>
+      <td>${handLabel(item.hand)}</td>
+      <td class="km-cell">${fmtNum(item.km)}</td>
+      <td class="km-cell">${fmtNum(item.kmPerYear)}</td>
+      <td><span class="score-${cat}">${scoreLabel(cat)}</span></td>
+      <td>${item.engine || '—'}</td>
+      <td class="price-cell">${fmtNum(item.price)}</td>
+      <td><a class="link-btn" href="${item.href}" target="_blank" onclick="event.stopPropagation()">פתח מודעה</a></td>`;
+    tbody.appendChild(tr);
+
+    // Detail row (hidden by default)
+    const detailTr = document.createElement('tr');
+    detailTr.className = 'detail-row hidden';
+    detailTr.id = `detail-${idx}`;
+    detailTr.innerHTML = `<td colspan="11">${item.location ? '<strong>מיקום:</strong> ' + item.location + '  |  ' : ''}${item.description ? '<strong>תיאור:</strong> ' + item.description.substring(0, 300) : ''}</td>`;
+    tbody.appendChild(detailTr);
+  });
+
+  const noRes = document.getElementById('no-results');
+  noRes.classList.toggle('hidden', visible.length > 0);
+
+  const stats = document.getElementById('stats-bar');
+  const yad2Count = visible.filter(i => i.source === 'yad2').length;
+  const fbCount = visible.filter(i => i.source === 'facebook').length;
+  stats.textContent = `מוצגות ${visible.length} מתוך ${LISTINGS.length} מודעות  |  יד2: ${yad2Count}  |  פייסבוק: ${fbCount}`;
+}
+
+function toggleDetail(href, idx) {
+  const row = document.getElementById(`detail-${idx}`);
+  if (row) row.classList.toggle('hidden');
+}
+</script>
+</body>
+</html>
