@@ -107,6 +107,7 @@ const filters = { source: 'all', hand: 'all', score: 'all' };
 let sortKey = 'kmPerYear';
 let sortDir = 1; // 1=asc, -1=desc
 const expandedRows = new Set();
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 // ── Init ────────────────────────────────────────────────────────────────────
 document.title = `חיפוש: ${META.make} ${META.model}`;
@@ -200,23 +201,23 @@ function render() {
     tr.onclick = () => toggleDetail(item.href, idx);
     tr.innerHTML = `
       <td><span class="src-${item.source}">${item.source === 'yad2' ? 'יד2' : 'FB'}</span></td>
-      <td>${item.seller || '—'}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${item.model || ''}">${item.model || '—'}</td>
+      <td>${esc(item.seller)}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(item.model)}">${esc(item.model)}</td>
       <td>${item.year || '—'}</td>
       <td>${handLabel(item.hand)}</td>
       <td class="km-cell">${fmtNum(item.km)}</td>
       <td class="km-cell">${fmtNum(item.kmPerYear)}</td>
       <td><span class="score-${cat}">${scoreLabel(cat)}</span></td>
-      <td>${item.engine || '—'}</td>
+      <td>${esc(item.engine)}</td>
       <td class="price-cell">${fmtNum(item.price)}</td>
-      <td><a class="link-btn" href="${item.href}" target="_blank" onclick="event.stopPropagation()">פתח מודעה</a></td>`;
+      <td><a class="link-btn" href="${esc(item.href)}" target="_blank" onclick="event.stopPropagation()">פתח מודעה</a></td>`;
     tbody.appendChild(tr);
 
     // Detail row (hidden by default)
     const detailTr = document.createElement('tr');
     detailTr.className = 'detail-row hidden';
     detailTr.id = `detail-${idx}`;
-    detailTr.innerHTML = `<td colspan="11">${item.location ? '<strong>מיקום:</strong> ' + item.location + '  |  ' : ''}${item.description ? '<strong>תיאור:</strong> ' + item.description.substring(0, 300) : ''}</td>`;
+    detailTr.innerHTML = `<td colspan="11">${item.location ? '<strong>מיקום:</strong> ' + esc(item.location) + '  |  ' : ''}${item.description ? '<strong>תיאור:</strong> ' + esc(item.description.substring(0, 300)) : ''}</td>`;
     tbody.appendChild(detailTr);
   });
 
