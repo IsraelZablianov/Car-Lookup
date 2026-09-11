@@ -1,0 +1,4 @@
+interface:
+  display_name: "Car Lookup"
+  short_description: "Choose a suitable car and compare Israeli listings"
+  default_prompt: "Use $car-lookup to help me choose a car that fits my needs and budget, then find relevant listings in Israel."

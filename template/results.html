@@ -40,6 +40,8 @@
   #no-results { text-align: center; padding: 40px; color: #888; font-size: 1rem; }
   .price-cell { font-weight: 700; color: #1a1a2e; white-space: nowrap; }
   .km-cell { white-space: nowrap; }
+  .note { padding: 10px 20px; font-size: 0.85rem; line-height: 1.6; background: #fff; color: #555; }
+  .check-label { display: block; color: #856404; font-size: 0.75rem; }
 </style>
 </head>
 <body>
@@ -48,7 +50,10 @@
   <h1 id="main-title">טוען...</h1>
   <div class="meta" id="search-meta"></div>
   <div class="meta" id="gen-time"></div>
+  <div class="meta" id="coverage"></div>
 </div>
+
+<p class="note">ק״מ לשנה הוא ממוצע משוער לפי שנת הרכב, ואינו דירוג מצב, אמינות או כדאיות. פרטי המודעות הם דיווחי מוכרים; יש לאמת היסטוריית טיפולים ומצב בפועל.</p>
 
 <div id="filter-bar">
   <div class="filter-group">
@@ -65,12 +70,13 @@
     <button class="chip" data-filter="hand" data-val="3+" onclick="setFilter('hand','3+',this)">יד 3+</button>
   </div>
   <div class="filter-group">
-    <label>ניקוד:</label>
+    <label>נסועה שנתית:</label>
     <button class="chip active" data-filter="score" data-val="all" onclick="setFilter('score','all',this)">הכל</button>
-    <button class="chip" data-filter="score" data-val="excellent" onclick="setFilter('score','excellent',this)">מצוין</button>
-    <button class="chip" data-filter="score" data-val="good" onclick="setFilter('score','good',this)">טוב</button>
-    <button class="chip" data-filter="score" data-val="average" onclick="setFilter('score','average',this)">ממוצע</button>
-    <button class="chip" data-filter="score" data-val="high" onclick="setFilter('score','high',this)">גבוה</button>
+    <button class="chip" data-filter="score" data-val="excellent" onclick="setFilter('score','excellent',this)">עד 10 אלף</button>
+    <button class="chip" data-filter="score" data-val="good" onclick="setFilter('score','good',this)">10–15 אלף</button>
+    <button class="chip" data-filter="score" data-val="average" onclick="setFilter('score','average',this)">15–20 אלף</button>
+    <button class="chip" data-filter="score" data-val="high" onclick="setFilter('score','high',this)">מעל 20 אלף</button>
+    <button class="chip" data-filter="score" data-val="na" onclick="setFilter('score','na',this)">לא ידוע</button>
   </div>
 </div>
 
@@ -87,9 +93,9 @@
         <th onclick="sortBy('hand')">יד</th>
         <th onclick="sortBy('km')" class="km-cell">ק"מ</th>
         <th onclick="sortBy('kmPerYear')">ק"מ/שנה</th>
-        <th onclick="sortBy('scoreCat')">ניקוד</th>
+        <th onclick="sortBy('scoreCat')">טווח ק״מ/שנה</th>
         <th onclick="sortBy('engine')">מנוע</th>
-        <th onclick="sortBy('price')">מחיר ₪</th>
+        <th onclick="sortBy('price')" class="sorted-asc">מחיר ₪</th>
         <th>קישור</th>
       </tr>
     </thead>
@@ -104,17 +110,18 @@ const META = __META__;
 
 // ── State ───────────────────────────────────────────────────────────────────
 const filters = { source: 'all', hand: 'all', score: 'all' };
-let sortKey = 'kmPerYear';
+let sortKey = 'price';
 let sortDir = 1; // 1=asc, -1=desc
-const expandedRows = new Set();
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 // ── Init ────────────────────────────────────────────────────────────────────
-document.title = `חיפוש: ${META.make} ${META.model}`;
-document.getElementById('main-title').textContent = `חיפוש: ${META.make} ${META.model}`;
+const searchTitle = [META.make, META.model].filter(Boolean).join(' ') || 'רכב';
+document.title = `חיפוש: ${searchTitle}`;
+document.getElementById('main-title').textContent = `חיפוש: ${searchTitle}`;
 document.getElementById('search-meta').textContent =
-  `מחיר: ${META.priceMin.toLocaleString()}–${META.priceMax.toLocaleString()} ₪  |  שנים: ${META.yearMin}–${META.yearMax}  |  ק"מ עד: ${META.kmMax.toLocaleString()}  |  מנוע: ${META.engine || 'כל הנפחים'}`;
-document.getElementById('gen-time').textContent = `נוצר: ${META.generatedAt}`;
+  `מחיר: ${fmtNum(META.priceMin)}–${fmtNum(META.priceMax)} ₪  |  שנים: ${META.yearMin ?? '—'}–${META.yearMax ?? '—'}  |  ק"מ עד: ${fmtNum(META.kmMax)}  |  מנוע: ${META.engine || 'כל הנפחים'}`;
+document.getElementById('gen-time').textContent = `נוצר: ${META.generatedAt || '—'}`;
+document.getElementById('coverage').textContent = META.coverage || 'היקף הכיסוי לא תועד';
 
 render();
 
@@ -128,7 +135,14 @@ function scoreCategory(kmPerYear) {
 }
 
 function scoreLabel(cat) {
-  return { excellent: 'מצוין ⭐', good: 'טוב ✓', average: 'ממוצע ~', high: 'גבוה ⚠', na: 'N/A' }[cat];
+  return { excellent: 'עד 10 אלף', good: '10–15 אלף', average: '15–20 אלף', high: 'מעל 20 אלף', na: 'לא ידוע' }[cat];
+}
+
+function listingLink(href) {
+  try {
+    const url = new URL(href);
+    return ['https:', 'http:'].includes(url.protocol) ? url.href : null;
+  } catch { return null; }
 }
 
 function fmtNum(n) {
@@ -175,9 +189,9 @@ function sortBy(key) {
 }
 
 function cmpVal(item, key) {
-  if (key === 'scoreCat') return scoreCategory(item.kmPerYear) === 'na' ? 9 : ['excellent','good','average','high'].indexOf(scoreCategory(item.kmPerYear));
+  if (key === 'scoreCat') return scoreCategory(item.kmPerYear) === 'na' ? null : ['excellent','good','average','high'].indexOf(scoreCategory(item.kmPerYear));
   const v = item[key];
-  if (v === null || v === undefined || v === '') return sortDir === 1 ? Infinity : -Infinity;
+  if (v === null || v === undefined || v === '' || (typeof v === 'number' && !Number.isFinite(v))) return null;
   return typeof v === 'string' ? v : Number(v);
 }
 
@@ -187,7 +201,9 @@ function render() {
   visible.sort((a, b) => {
     const av = cmpVal(a, sortKey), bv = cmpVal(b, sortKey);
     if (av === bv) return 0;
-    if (typeof av === 'string') return av.localeCompare(bv) * sortDir;
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    if (typeof av === 'string' || typeof bv === 'string') return String(av).localeCompare(String(bv), 'he') * sortDir;
     return (av - bv) * sortDir;
   });
 
@@ -196,28 +212,34 @@ function render() {
 
   visible.forEach((item, idx) => {
     const cat = scoreCategory(item.kmPerYear);
+    const href = listingLink(item.href);
     const tr = document.createElement('tr');
     tr.style.cursor = 'pointer';
-    tr.onclick = () => toggleDetail(item.href, idx);
+    tr.onclick = () => toggleDetail(idx);
     tr.innerHTML = `
-      <td><span class="src-${item.source}">${item.source === 'yad2' ? 'יד2' : 'FB'}</span></td>
+      <td><span class="src-${esc(item.source)}">${item.source === 'yad2' ? 'יד2' : 'FB'}</span></td>
       <td>${esc(item.seller)}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(item.model)}">${esc(item.model)}</td>
-      <td>${item.year || '—'}</td>
-      <td>${handLabel(item.hand)}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(item.model)}">${esc(item.model)}${item.matchStatus !== 'match' ? '<span class="check-label">התאמה דורשת בדיקה</span>' : ''}</td>
+      <td>${esc(item.year ?? '—')}</td>
+      <td>${esc(handLabel(item.hand))}</td>
       <td class="km-cell">${fmtNum(item.km)}</td>
       <td class="km-cell">${fmtNum(item.kmPerYear)}</td>
       <td><span class="score-${cat}">${scoreLabel(cat)}</span></td>
       <td>${esc(item.engine)}</td>
       <td class="price-cell">${fmtNum(item.price)}</td>
-      <td><a class="link-btn" href="${esc(item.href)}" target="_blank" onclick="event.stopPropagation()">פתח מודעה</a></td>`;
+      <td>${href ? `<a class="link-btn" href="${esc(href)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">פתח מודעה</a>` : '—'}</td>`;
     tbody.appendChild(tr);
 
     // Detail row (hidden by default)
     const detailTr = document.createElement('tr');
     detailTr.className = 'detail-row hidden';
     detailTr.id = `detail-${idx}`;
-    detailTr.innerHTML = `<td colspan="11">${item.location ? '<strong>מיקום:</strong> ' + esc(item.location) + '  |  ' : ''}${item.description ? '<strong>תיאור:</strong> ' + esc(item.description.substring(0, 300)) : ''}</td>`;
+    detailTr.innerHTML = `<td colspan="11">${[
+      item.location ? '<strong>מיקום:</strong> ' + esc(item.location) : '',
+      item.checkedAt ? '<strong>נצפה:</strong> ' + esc(item.checkedAt) : '',
+      item.notes ? '<strong>לבדיקה:</strong> ' + esc(item.notes) : '',
+      item.description ? '<strong>תיאור:</strong> ' + esc(item.description) : ''
+    ].filter(Boolean).join('  |  ')}</td>`;
     tbody.appendChild(detailTr);
   });
 
@@ -230,7 +252,7 @@ function render() {
   stats.textContent = `מוצגות ${visible.length} מתוך ${LISTINGS.length} מודעות  |  יד2: ${yad2Count}  |  פייסבוק: ${fbCount}`;
 }
 
-function toggleDetail(href, idx) {
+function toggleDetail(idx) {
   const row = document.getElementById(`detail-${idx}`);
   if (row) row.classList.toggle('hidden');
 }

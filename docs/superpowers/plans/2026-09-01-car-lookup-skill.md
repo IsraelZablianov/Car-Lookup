@@ -1,5 +1,8 @@
 # Car Lookup Skill Implementation Plan
 
+> Historical Claude v1 implementation plan, not an active task list. Current
+> instructions are in `AGENTS.md` and `.agents/skills/car-lookup/SKILL.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a `/car-lookup` Claude Code skill that scrapes Yad2 and Facebook Marketplace for all matching used-car listings, visits each listing for km data, scores them by km/year ratio, and outputs a sortable interactive Hebrew HTML dashboard.

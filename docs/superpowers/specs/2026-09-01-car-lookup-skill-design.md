@@ -1,5 +1,8 @@
 # Car Lookup Skill — Design Spec
 
+> Historical Claude v1 design. The current workflow is maintained in
+> `.agents/skills/car-lookup/SKILL.md`; see the repository README.
+
 **Date:** 2026-09-01  
 **Status:** Approved  
 
