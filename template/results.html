@@ -12,6 +12,10 @@
   #header .meta { font-size: 0.85rem; color: #aab; }
   #filter-bar { background: #fff; border-bottom: 1px solid #ddd; padding: 12px 20px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
   .filter-group { display: flex; gap: 6px; align-items: center; }
+  select { max-width: 100%; padding: 7px 10px; border: 1px solid #bbb; border-radius: 6px; background: #fff; color: #222; font: inherit; }
+  .recommendation { min-width: 210px; max-width: 300px; }
+  .recommendation strong { display: block; color: #24436d; margin-bottom: 4px; }
+  .recommendation small { display: block; line-height: 1.5; color: #555; }
   .filter-group label { font-size: 0.8rem; color: #666; font-weight: 600; }
   .chip { border: 1.5px solid #bbb; border-radius: 16px; padding: 4px 14px; font-size: 0.8rem; cursor: pointer; background: #fff; transition: all .15s; }
   .chip.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
@@ -42,6 +46,7 @@
   .km-cell { white-space: nowrap; }
   .note { padding: 10px 20px; font-size: 0.85rem; line-height: 1.6; background: #fff; color: #555; }
   .check-label { display: block; color: #856404; font-size: 0.75rem; }
+  #source-note a { display: inline-block; margin-inline-start: 10px; color: #234f91; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -54,8 +59,26 @@
 </div>
 
 <p class="note">ק״מ לשנה הוא ממוצע משוער לפי שנת הרכב, ואינו דירוג מצב, אמינות או כדאיות. פרטי המודעות הם דיווחי מוכרים; יש לאמת היסטוריית טיפולים ומצב בפועל.</p>
+<p class="note" id="recommendation-note"></p>
 
 <div id="filter-bar">
+  <div class="filter-group">
+    <label for="model-filter">דגם רכב:</label>
+    <select id="model-filter" onchange="filters.model = this.value; render()">
+      <option value="">כל הדגמים</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label for="sort-select">מיון:</label>
+    <select id="sort-select" onchange="chooseSort(this.value)">
+      <option value="recommendation:1">המומלצים ביותר</option>
+      <option value="price:1">מחיר — מהנמוך לגבוה</option>
+      <option value="price:-1">מחיר — מהגבוה לנמוך</option>
+      <option value="year:-1">שנתון — מהחדש לישן</option>
+      <option value="km:1">ק״מ — מהנמוך לגבוה</option>
+      <option value="custom" disabled>מיון לפי עמודה</option>
+    </select>
+  </div>
   <div class="filter-group">
     <label>מקור:</label>
     <button class="chip active" data-filter="source" data-val="all" onclick="setFilter('source','all',this)">הכל</button>
@@ -80,12 +103,14 @@
   </div>
 </div>
 
+<p class="note hidden" id="source-note"></p>
 <div id="stats-bar"></div>
 
 <div class="container">
   <table id="results-table">
     <thead>
       <tr>
+        <th onclick="sortBy('recommendation')">ההמלצה שלי</th>
         <th onclick="sortBy('source')">מקור</th>
         <th onclick="sortBy('seller')">מוכר</th>
         <th onclick="sortBy('model')">דגם</th>
@@ -95,7 +120,7 @@
         <th onclick="sortBy('kmPerYear')">ק"מ/שנה</th>
         <th onclick="sortBy('scoreCat')">טווח ק״מ/שנה</th>
         <th onclick="sortBy('engine')">מנוע</th>
-        <th onclick="sortBy('price')" class="sorted-asc">מחיר ₪</th>
+        <th onclick="sortBy('price')">מחיר ₪</th>
         <th>קישור</th>
       </tr>
     </thead>
@@ -109,8 +134,9 @@ const LISTINGS = __DATA__;
 const META = __META__;
 
 // ── State ───────────────────────────────────────────────────────────────────
-const filters = { source: 'all', hand: 'all', score: 'all' };
-let sortKey = 'price';
+const filters = { model: '', source: 'all', hand: 'all', score: 'all' };
+if (['#facebook', '#yad2'].includes(location.hash)) filters.source = location.hash.slice(1);
+let sortKey = LISTINGS.some(item => item.recommendationPriority != null) ? 'recommendation' : 'price';
 let sortDir = 1; // 1=asc, -1=desc
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -118,14 +144,52 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const searchTitle = [META.make, META.model].filter(Boolean).join(' ') || 'רכב';
 document.title = `חיפוש: ${searchTitle}`;
 document.getElementById('main-title').textContent = `חיפוש: ${searchTitle}`;
+const yearRange = META.yearMin != null
+  ? (META.yearMax != null ? `${META.yearMin}–${META.yearMax}` : `${META.yearMin} ואילך, ללא תקרה`)
+  : (META.yearMax != null ? `עד ${META.yearMax}` : 'כל השנים');
 document.getElementById('search-meta').textContent =
-  `מחיר: ${fmtNum(META.priceMin)}–${fmtNum(META.priceMax)} ₪  |  שנים: ${META.yearMin ?? '—'}–${META.yearMax ?? '—'}  |  ק"מ עד: ${fmtNum(META.kmMax)}  |  מנוע: ${META.engine || 'כל הנפחים'}`;
+  `מחיר: ${fmtNum(META.priceMin)}–${fmtNum(META.priceMax)} ₪  |  שנים: ${yearRange}  |  ק"מ עד: ${fmtNum(META.kmMax)}  |  מנוע: ${META.engine || 'כל הנפחים'}`;
 document.getElementById('gen-time').textContent = `נוצר: ${META.generatedAt || '—'}`;
 document.getElementById('coverage').textContent = META.coverage || 'היקף הכיסוי לא תועד';
+document.getElementById('recommendation-note').textContent = META.recommendationMethod || 'המלצות מוצגות כאשר נערכה הערכה אישית. מודעות ללא הערכה יופיעו בסוף מיון ההמלצות.';
+document.querySelectorAll('[data-filter="source"]').forEach(button => button.classList.toggle('active', button.dataset.val === filters.source));
+const sourceNote = document.getElementById('source-note');
+if (META.sourceNote) {
+  sourceNote.textContent = META.sourceNote;
+  sourceNote.classList.remove('hidden');
+}
+if (META.relatedReport && /^[\w.-]+\.html(?:#[\w-]+)?$/.test(META.relatedReport.href)) {
+  const link = document.createElement('a');
+  link.href = META.relatedReport.href;
+  link.textContent = META.relatedReport.label || 'דוח לידים נוספים';
+  sourceNote.appendChild(link);
+  sourceNote.classList.remove('hidden');
+}
+const modelCounts = new Map();
+for (const item of LISTINGS) {
+  const model = modelGroup(item);
+  modelCounts.set(model, (modelCounts.get(model) || 0) + 1);
+}
+for (const [model, count] of [...modelCounts].sort(([a], [b]) => a.localeCompare(b, 'he'))) {
+  const option = document.createElement('option');
+  option.value = model;
+  option.textContent = `${model} (${count})`;
+  document.getElementById('model-filter').appendChild(option);
+}
 
 render();
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
+function modelGroup(item) {
+  return item.modelGroup || item.model?.split(' — ')[0] || 'דגם לא ידוע';
+}
+
+function recommendationLabel(item) {
+  const labels = { 1: 'כדאי לבדוק קודם', 2: 'חלופה מומלצת', 3: 'חלופה נוספת', 4: 'מותנה בבירור', 5: 'מודעה כפולה אפשרית' };
+  const label = labels[item.recommendationPriority] || 'טרם דורג';
+  return item.recommendationRank != null ? `#${item.recommendationRank} · ${label}` : label;
+}
+
 function scoreCategory(kmPerYear) {
   if (kmPerYear === null || kmPerYear === undefined || isNaN(kmPerYear)) return 'na';
   if (kmPerYear <= 10000) return 'excellent';
@@ -166,6 +230,7 @@ function setFilter(key, val, el) {
 
 function passesFilter(item) {
   const cat = scoreCategory(item.kmPerYear);
+  if (filters.model && modelGroup(item) !== filters.model) return false;
   if (filters.source !== 'all' && item.source !== filters.source) return false;
   if (filters.hand !== 'all') {
     if (filters.hand === '3+') { if (!item.hand || item.hand < 3) return false; }
@@ -179,16 +244,30 @@ function passesFilter(item) {
 function sortBy(key) {
   if (sortKey === key) sortDir *= -1;
   else { sortKey = key; sortDir = 1; }
+  render();
+}
+
+function chooseSort(value) {
+  const [key, direction] = value.split(':');
+  sortKey = key;
+  sortDir = Number(direction);
+  render();
+}
+
+function syncSortControls() {
   document.querySelectorAll('th').forEach(th => th.classList.remove('sorted-asc','sorted-desc'));
-  const thIdx = ['source','seller','model','year','hand','km','kmPerYear','scoreCat','engine','price'].indexOf(key);
+  const thIdx = ['recommendation','source','seller','model','year','hand','km','kmPerYear','scoreCat','engine','price'].indexOf(sortKey);
   if (thIdx >= 0) {
     const th = document.querySelectorAll('thead th')[thIdx];
     th.classList.add(sortDir === 1 ? 'sorted-asc' : 'sorted-desc');
   }
-  render();
+  const select = document.getElementById('sort-select');
+  const value = `${sortKey}:${sortDir}`;
+  select.value = [...select.options].some(option => option.value === value) ? value : 'custom';
 }
 
 function cmpVal(item, key) {
+  if (key === 'recommendation') return item.recommendationPriority ?? null;
   if (key === 'scoreCat') return scoreCategory(item.kmPerYear) === 'na' ? null : ['excellent','good','average','high'].indexOf(scoreCategory(item.kmPerYear));
   const v = item[key];
   if (v === null || v === undefined || v === '' || (typeof v === 'number' && !Number.isFinite(v))) return null;
@@ -197,10 +276,19 @@ function cmpVal(item, key) {
 
 // ── Render ───────────────────────────────────────────────────────────────────
 function render() {
+  syncSortControls();
   const visible = LISTINGS.filter(passesFilter);
   visible.sort((a, b) => {
     const av = cmpVal(a, sortKey), bv = cmpVal(b, sortKey);
-    if (av === bv) return 0;
+    if (av === bv) {
+      if (sortKey === 'recommendation') {
+        const ar = a.recommendationRank ?? Infinity, br = b.recommendationRank ?? Infinity;
+        if (ar !== br) return (ar - br) * sortDir;
+        const ap = a.price ?? Infinity, bp = b.price ?? Infinity;
+        return ap === bp ? 0 : (ap - bp) * sortDir;
+      }
+      return 0;
+    }
     if (av === null) return 1;
     if (bv === null) return -1;
     if (typeof av === 'string' || typeof bv === 'string') return String(av).localeCompare(String(bv), 'he') * sortDir;
@@ -217,6 +305,7 @@ function render() {
     tr.style.cursor = 'pointer';
     tr.onclick = () => toggleDetail(idx);
     tr.innerHTML = `
+      <td class="recommendation"><strong>${esc(recommendationLabel(item))}</strong><small>${esc(item.recommendationReason || 'לא נערכה הערכה אישית למודעה זו.')}</small></td>
       <td><span class="src-${esc(item.source)}">${item.source === 'yad2' ? 'יד2' : 'FB'}</span></td>
       <td>${esc(item.seller)}</td>
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(item.model)}">${esc(item.model)}${item.matchStatus !== 'match' ? '<span class="check-label">התאמה דורשת בדיקה</span>' : ''}</td>
@@ -234,7 +323,7 @@ function render() {
     const detailTr = document.createElement('tr');
     detailTr.className = 'detail-row hidden';
     detailTr.id = `detail-${idx}`;
-    detailTr.innerHTML = `<td colspan="11">${[
+    detailTr.innerHTML = `<td colspan="12">${[
       item.location ? '<strong>מיקום:</strong> ' + esc(item.location) : '',
       item.checkedAt ? '<strong>נצפה:</strong> ' + esc(item.checkedAt) : '',
       item.notes ? '<strong>לבדיקה:</strong> ' + esc(item.notes) : '',
@@ -244,6 +333,7 @@ function render() {
   });
 
   const noRes = document.getElementById('no-results');
+  noRes.textContent = META.sourceEmptyMessages?.[filters.source] || 'אין תוצאות תואמות לסינון הנוכחי';
   noRes.classList.toggle('hidden', visible.length > 0);
 
   const stats = document.getElementById('stats-bar');

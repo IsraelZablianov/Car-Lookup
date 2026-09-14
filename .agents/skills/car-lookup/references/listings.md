@@ -30,10 +30,42 @@ search actually selects the intended model before trusting it. Exact engine
 displacement differs from rounded marketing labels; do not assume “1.6” uniquely
 identifies a fuel type, engine, or gearbox.
 
-Follow observed next-page links, collecting unique `/item/` URLs at every page.
+Follow observed next-page links, collecting unique listing URLs at every page.
+Private listings observed in September 2026 used relative `href="item/<id>"`
+while dealer links used absolute `/item/<id>` URLs. A selector requiring the
+literal substring `/item/` misses the relative private links. Inspect the DOM,
+select both forms, and resolve each anchor's `href` against the page URL.
+Exclude favourites, related-car carousels and unrelated promoted ads from feed
+counts; match the queried model again after collection.
+
 Do not interpret absence of numeric pagination as proof of a single page. Stop
 when next is absent/disabled, pages repeat, access fails, or the stated search
 scope is reached. Report the stopping reason and pages actually visited.
+For an exhaustive request, scope is all reachable results of the selected query;
+stopping early due to errors or repeat pages makes coverage incomplete. Keep a
+per-query ledger of visited URLs/page labels, unique item IDs and next links.
+Do not count page 0 and the unnumbered first page twice. When pagination windows
+shift, discover additional pages from the new page instead of trusting the
+initial set alone. Check declared total against collected feed entries and
+explain discrepancies from ads, removed items or changes during the run.
+
+Use the current private-seller control when available and verify its resulting
+query and behaviour. Still check each candidate's seller type. The price filter
+has included missing-price, placeholder-price and auction ads; those are not
+verified budget matches. Newest-first was observed as `Order=6`; verify the
+visible sorting label in each session.
+
+The September 2026 `מודעות מסוכנויות` checkbox was unchecked while both private
+and agency ads were visible; unchecked must not be interpreted as private-only.
+Classify the actual cards (for example `private-vehicle` versus `vehicle-agency`)
+and inspect private-ad descriptions for commercial activity. Feed totals can
+also include external auction links such as konesy2, which an item-only anchor
+selector omits; record these as excluded auctions when reconciling totals.
+The observed UI encoded an open-ended minimum year as `year=2016--1`, and an
+unset end of other ranges as `-1`. Verify the visible filters before reuse.
+Platform-provided finance/insurance widgets appear on private detail pages too;
+they are not evidence that the seller is a dealer. Scope seller-type evidence
+to the seller's own ad, account and relevant public inventory.
 
 On each listing, inspect labelled vehicle specifications and its own asking
 price. Old selectors such as `[data-testid="feed-item-info"]`,
@@ -54,12 +86,33 @@ Collect and deduplicate `/marketplace/item/` links after **every** scroll; cards
 may be removed from the DOM as new ones load. Stop after two loaded scrolls add
 no new unique URLs, an explicit end is reached, or the stated scope is reached.
 No-new-links is a coverage limit, not proof that every listing was collected.
+Scroll the actual results container if it is independently scrollable. Wait
+for each load to settle before comparing accumulated unique item IDs, rather
+than only comparing DOM counts. For thorough searches, repeat the bottom/load
+check before concluding stagnation. Persist links throughout, and resume from
+saved progress after interruptions. Record the query, location/radius, filters,
+load attempts, distinct listings, excluded sellers and final stopping reason.
+
+Check for an explicit `Results from outside your search` boundary after every
+load, including the initial batch. This marker was observed in September 2026;
+Facebook kept loading thousands of unrelated recommendations beyond it. Save
+only the links preceding that marker as query matches, record that the matching
+section ended there, and keep any already collected recommendation links in a
+separate discovery log. Detect the marker while it is present: virtualization
+can remove it after further scrolling. A feed that keeps loading beyond this
+boundary is not additional matching pagination.
 
 Visit details and scope extraction to the current listing, excluding suggested
 cars and sidebars. Expand its description where available; do not choose the
 five largest page text blocks. Extract only explicit seller/vehicle data.
 Seller type remains unknown unless supported by evidence. Validate make, model,
 price, year, engine, and location against requirements after extraction.
+For private-only searches, look for explicit private-sale evidence and
+contradictions such as agency branding, brokerage language, trade-in offers or
+many concurrently advertised vehicles. A personal name alone does not establish
+private status. Use only relevant public seller/listing information; do not read
+inboxes or send messages. Seller identity and ownership should ultimately be
+checked against vehicle documents by the buyer.
 
 ## Normalisation
 
@@ -98,6 +151,9 @@ verify, or rank cars; the agent must normalise and assess them first.
 | `generatedAt` | ISO timestamp with time zone |
 | `coverage` | Readable coverage summary including blocked/unsearched sources, pages and skipped counts |
 | `searches` | Optional array of source URLs, filters, observation times, and stopping reasons |
+| `recommendationMethod` | Explain the buyer-specific ordering, evidence date, tradeoffs and tie-breaking |
+| `sourceNote`, `sourceEmptyMessages` | Explain searched sources with zero accepted ads, including missing evidence rather than implying no search occurred |
+| `relatedReport` | Optional `{href, label}` linking to another local HTML report; `#facebook` or `#yad2` opens it with that source selected |
 
 `listings` is an array of objects:
 
@@ -106,6 +162,7 @@ verify, or rank cars; the agent must normalise and assess them first.
 | `source` | `yad2` or `facebook` |
 | `href` | Observed HTTPS listing link |
 | `model` | Display name including trim when known |
+| `modelGroup` | Consistent make/model label across trims and sources, used to populate the model filter |
 | `year`, `km`, `hand`, `price`, `kmPerYear` | Numbers or null; price is total asking price in ILS |
 | `engine`, `fuel`, `transmission` | Text or null |
 | `seller`, `location`, `description` | Listing text or null |
@@ -113,9 +170,19 @@ verify, or rank cars; the agent must normalise and assess them first.
 | `checkedAt` | Detail-page observation timestamp |
 | `matchStatus` | `match` or `needs-check` |
 | `notes` | Concise missing facts, seller claims, and conflicts |
+| `recommendationPriority` | Optional group: 1 check first, 2 recommended alternative, 3 additional option, 4 conditional, 5 probable duplicate; null means unassessed |
+| `recommendationRank` | Optional positive ordinal within the shortlist; retain its number when filtering |
+| `recommendationReason` | Required when a priority is present; concise buyer-specific reason and material tradeoff |
 
 Keep extra evidence/history fields in the saved JSON when useful. The dashboard
 shows a subset; do not imply it automatically measures personal suitability.
+Populate `modelGroup` for every listing so a multi-model search can be filtered
+across trims and sources. When recommendations are requested, assess the actual
+ads and save a reason with each priority; do not derive ratings from annual
+mileage or invent mechanical-condition scores. Conditional leads remain in the
+separate unresolved report. The dashboard defaults to recommendation ordering
+when priorities are supplied, with shortlist rank then asking price as tie-breaks;
+unassessed ads sort last. Legacy data without priorities defaults to price.
 
 Render from the repository root:
 

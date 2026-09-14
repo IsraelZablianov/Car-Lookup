@@ -32,7 +32,7 @@ Yad2 and Facebook Marketplace listings in an offline, sortable Hebrew dashboard.
 | 🧭 **Learns what you need** | Budget ceiling, driving profile, passengers, parking, priorities — asked a few questions at a time, not as a questionnaire |
 | 🔍 **Shortlists models** | Researches candidates against *your* needs with live sources, showing tradeoffs and what still needs checking |
 | 🛒 **Finds listings** | Searches Yad2 and Facebook Marketplace, opens candidate ads, and extracts the labelled details |
-| 📊 **Builds a dashboard** | One self-contained Hebrew HTML file with filters, sortable columns, and expandable details |
+| 📊 **Builds a dashboard** | One self-contained Hebrew HTML file: ranked shortlist, filters, sortable columns, expandable details |
 | 🧾 **Reports its coverage** | Exact filters applied, pages visited, blocked sources, and skipped listings — no invented completeness |
 
 ## 🚀 Quick start
@@ -101,8 +101,9 @@ node scripts/render-results.mjs results/search.json results/search.html
 open results/search.html
 ```
 
-- **Filters** — source, ownership count (יד), annual-mileage band
-- **Sorting** — every column, with nulls sorted last instead of as zero
+- **Ranked shortlist** — each assessed ad carries the agent's priority, its rank, and a one-line reason; unassessed ads sort last as `טרם דורג`
+- **Filters** — model, source, ownership count (יד), annual-mileage band
+- **Sorting** — presets (most recommended, price, year, mileage) plus every column, with nulls sorted last instead of as zero
 - **Details** — click a row for location, observation time, seller notes, description
 - **Honest gaps** — missing fields stay `—`; unverified matches are flagged `התאמה דורשת בדיקה`
 - **Safe by default** — listing text is escaped, only `http(s)` links render, and the renderer refuses to overwrite an existing file
@@ -112,10 +113,13 @@ The input shape is documented in
 
 ```jsonc
 {
-  "meta":     { "make": "…", "model": "…", "priceMax": 70000, "coverage": "…" },
-  "listings": [{ "source": "yad2", "href": "https://…", "year": 2019,
-                 "km": 62000, "hand": 1, "price": 58000,
-                 "matchStatus": "match", "notes": "…" }]
+  "meta":     { "make": "…", "model": "…", "priceMax": 70000,
+                "coverage": "…", "recommendationMethod": "…" },
+  "listings": [{ "source": "yad2", "href": "https://…", "modelGroup": "…",
+                 "year": 2019, "km": 62000, "hand": 1, "price": 58000,
+                 "matchStatus": "match", "notes": "…",
+                 "recommendationPriority": 1, "recommendationRank": 1,
+                 "recommendationReason": "…" }]
 }
 ```
 

@@ -35,6 +35,14 @@ exact home address or unnecessary personal details.
 
 ## Choose models
 
+For an undecided buyer, complete model selection before searching individual
+listings. Present the candidate models, exact engines/trims and target years,
+why each fits, likely budget tradeoffs, and relevant alternatives. Invite the
+buyer to narrow or refine this list. Start listing searches after they choose
+models or explicitly delegate that choice. A broad request to find a suitable
+car is not a reason to skip this discussion. A buyer who already names models
+can go directly to the listing stage.
+
 When the buyer is undecided, research a manageable shortlist against their
 needs. For each candidate, specify relevant years, engine, transmission, and
 local trim when known; show likely budget fit, reasons to consider it, main
@@ -49,8 +57,10 @@ trim without evidence. Cite links and distinguish evidence from inference.
 Assess suitability, ownership costs, condition/history, and price separately.
 Do not invent precise fit scores or use low kilometres per year as a proxy for
 reliability. Account for the user's priorities without silently choosing score
-weights. Explain a first choice and alternatives; continue to listings when
-the user's request and known constraints support it.
+weights. Explain a first choice and alternatives based on model suitability.
+Do not let cheap individual ads, high-mileage examples, or search-engine ordering
+determine which models belong on the shortlist. Budget feasibility should reflect
+representative cars, with compromises explained rather than hidden.
 
 ## Find and assess listings
 
@@ -65,12 +75,21 @@ skill, obey that browser's access rules.
 2. Search the relevant models and sources. Follow observed pagination rather
    than assuming a page-number scheme. Explain any access limitations. A blocked
    page is not evidence of zero matching cars.
+   When thorough/exhaustive research is requested, process every reachable page
+   for each selected query and continue Facebook loading to a documented end or
+   repeated completed loads without new unique items. Do not substitute a
+   first-page sample or impose an undisclosed page, listing, or time cap.
 3. Visit candidate detail pages and retain links, observation times, seller
    claims, missing fields, and conflicts. Check the user's constraints again
    after extraction, including Facebook results whose search filters may differ.
 4. Exclude known violations from the matching shortlist. Keep plausible cars
    with unknown required fields marked `needs-check`; never call them confirmed
    matches. Unknown seller type is not automatically private.
+   Enforce the buyer's seller restrictions before ranking. For private-only
+   searches, exclude agencies, dealers, brokers and commercially advertised cars
+   from the main shortlist, even when a personal account posted the ad. Keep
+   ambiguous seller identities in a separate unresolved-leads record. Record
+   previous rental/leasing use separately from current seller type.
 5. Summarise the most relevant cars with reasons, tradeoffs, and targeted
    questions for the seller or an independent inspection. Drafting questions
    does not authorize sending them.

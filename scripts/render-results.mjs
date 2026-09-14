@@ -22,6 +22,18 @@ try {
         throw new Error(`Listing ${key} must be a non-negative number or null.`);
       }
     }
+    if (item.modelGroup != null && (typeof item.modelGroup !== 'string' || !item.modelGroup.trim())) {
+      throw new Error('Listing modelGroup must be a non-empty string or null.');
+    }
+    if (item.recommendationPriority != null && (!Number.isInteger(item.recommendationPriority) || item.recommendationPriority < 1 || item.recommendationPriority > 5)) {
+      throw new Error('Listing recommendationPriority must be an integer from 1 to 5 or null.');
+    }
+    if (item.recommendationRank != null && (!Number.isInteger(item.recommendationRank) || item.recommendationRank < 1 || item.recommendationPriority == null)) {
+      throw new Error('Listing recommendationRank must be a positive integer with a recommendationPriority.');
+    }
+    if (item.recommendationPriority != null && (typeof item.recommendationReason !== 'string' || !item.recommendationReason.trim())) {
+      throw new Error('Ranked listings require a recommendationReason.');
+    }
   }
   const embed = value => JSON.stringify(value).replace(/</g, '\\u003c');
   const payloads = { __DATA__: embed(listings), __META__: embed(meta) };
